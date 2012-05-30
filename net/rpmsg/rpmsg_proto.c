@@ -35,6 +35,13 @@
 #define RPMSG_CB(skb)	(*(struct sockaddr_rpmsg *)&((skb)->cb))
 
 /*
+ * Used to distinguish between bound and connected socket channels in the
+ * radix tree index space.
+ * Must match value as in drivers/rpmsg/virtio_rpsmg_bus.c:
+ */
+#define RPMSG_RESERVED_ADDRESSES     (1024)
+
+/*
  * A two-level radix-tree-based scheme is used to maintain the rpmsg channels
  * we're exposing to userland. The first radix tree maps vproc index id
  * to its channels, and the second radix tree associates each channel
@@ -97,7 +104,7 @@ static int rpmsg_sock_connect(struct socket *sock, struct sockaddr *addr,
 		goto out;
 	}
 
-	/* find the specific channel we need to connect with */
+	/* find the specific channel we need to connect with, by dst addr:  */
 	rpdev = radix_tree_lookup(vrp_channels, sa->addr);
 	if (!rpdev) {
 		err = -EINVAL;
@@ -479,7 +486,7 @@ static void rpmsg_proto_cb(struct rpmsg_channel *rpdev, void *data, int len,
 static int rpmsg_proto_probe(struct rpmsg_channel *rpdev)
 {
 	struct device *dev = &rpdev->dev;
-	int ret, dst = rpdev->dst, id;
+	int ret, dst = rpdev->dst, src = rpdev->src, id;
 	struct radix_tree_root *vrp_channels;
 
 	if (dst == RPMSG_ADDR_ANY)
@@ -505,6 +512,7 @@ static int rpmsg_proto_probe(struct rpmsg_channel *rpdev)
 	}
 
 	/* let's associate the new channel with its dst */
+	dev_info(dev, "inserting rpmsg src: %d, dst: %d\n", src, dst);
 	ret = radix_tree_insert(vrp_channels, dst, rpdev);
 	if (ret)
 		dev_err(dev, "failed to add rpmsg addr %d: %d\n", dst, ret);
@@ -517,7 +525,7 @@ static int rpmsg_proto_probe(struct rpmsg_channel *rpdev)
 static void __devexit rpmsg_proto_remove(struct rpmsg_channel *rpdev)
 {
 	struct device *dev = &rpdev->dev;
-	int id, dst = rpdev->dst;
+	int id, dst = rpdev->dst, src = rpdev->src;
 	struct radix_tree_root *vrp_channels;
 
 	if (dst == RPMSG_ADDR_ANY)
@@ -533,8 +541,15 @@ static void __devexit rpmsg_proto_remove(struct rpmsg_channel *rpdev)
 		goto out;
 	}
 
-	if (!radix_tree_delete(vrp_channels, dst))
-		dev_err(dev, "failed to delete rpmsg %d\n", dst);
+	/* Only remove non-reserved channels from the tree, as only these
+	 * were "probed".  Note: bind is not causing a probe, and bound
+	 * sockets have src addresses < RPMSG_RESERVED_ADDRESSES.
+	 */
+	if (src >= RPMSG_RESERVED_ADDRESSES) {
+		dev_info(dev, "deleting rpmsg src: %d, dst: %d\n", src, dst);
+		if (!radix_tree_delete(vrp_channels, dst))
+			dev_err(dev, "failed to delete rpmsg %d\n", dst);
+	}
 
 out:
 	mutex_unlock(&rpmsg_channels_lock);
