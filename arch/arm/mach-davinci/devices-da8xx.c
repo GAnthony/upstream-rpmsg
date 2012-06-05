@@ -16,12 +16,14 @@
 #include <linux/serial_8250.h>
 #include <linux/ahci_platform.h>
 #include <linux/clk.h>
+#include <linux/memblock.h>
 
 #include <mach/cputype.h>
 #include <mach/common.h>
 #include <mach/time.h>
 #include <mach/da8xx.h>
 #include <mach/cpuidle.h>
+#include <mach/remoteproc.h>
 
 #include "clock.h"
 
@@ -658,6 +660,47 @@ int __init da850_register_mmcsd1(struct davinci_mmc_config *config)
 	da850_mmcsd1_device.dev.platform_data = config;
 	return platform_device_register(&da850_mmcsd1_device);
 }
+
+#define DA_CONTIG_BASE	(0xc3000000)
+#define DA_CONTIG_SIZE	(0x02000000)
+
+void __init davinci_rproc_reserve_contig(void)
+{
+	pr_info("reserving contig memory\n");
+
+	if (memblock_is_region_reserved(DA_CONTIG_BASE, DA_CONTIG_SIZE) ||
+	    memblock_reserve(DA_CONTIG_BASE, DA_CONTIG_SIZE) < 0) {
+		pr_err("memory already reserved\n");
+		return;
+	}
+}
+
+static struct platform_device *da8xx_dsp;
+
+int __init da850_register_rproc(void)
+{
+	struct davinci_rproc_pdata rproc_pdata = {
+		.name		= "dsp",
+		.firmware	= "da8xx-dsp.elf",
+		.clk_name	= "dsp",
+	};
+	int ret;
+
+	da8xx_dsp = platform_device_register_data(NULL, "davinci-rproc", 0,
+					    &rproc_pdata, sizeof(rproc_pdata));
+
+	ret = dma_declare_coherent_memory(&da8xx_dsp->dev,
+					DA_CONTIG_BASE, DA_CONTIG_BASE,
+					DA_CONTIG_SIZE,
+					DMA_MEMORY_MAP | DMA_MEMORY_EXCLUSIVE);
+
+	if (!(ret & DMA_MEMORY_MAP)) {
+		pr_err("dma_declare_coherent failure\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+};
 #endif
 
 static struct resource da8xx_rtc_resources[] = {

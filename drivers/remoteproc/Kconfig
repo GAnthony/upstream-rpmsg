@@ -3,6 +3,7 @@ menu "Remoteproc drivers (EXPERIMENTAL)"
 # REMOTEPROC gets selected by whoever wants it
 config REMOTEPROC
 	tristate
+	select FW_LOADER
 	depends on EXPERIMENTAL
 
 config OMAP_REMOTEPROC
@@ -36,5 +37,22 @@ config OMAP_DUCATI_CMA_SIZE
 	  Allocate a specified size of physically contiguous memory (CMA)
 	  for OMAP's dual M3 "Ducati" sub-system. Vast majority of this
 	  memory isn't wasted in case the M3 sub-system isn't loaded.
+
+config DAVINCI_REMOTEPROC
+	tristate "DaVinci DA850/OMAPL138 remoteproc support"
+	depends on ARCH_DAVINCI_DA850
+	select REMOTEPROC
+	select RPMSG
+	default y
+	help
+	  Say y here to support DaVinci DA850/OMAPL138 remote processors
+	  via the remote processor framework.
+
+	  Usually you want to say y here, in order to enable multimedia
+	  use-cases to run on your platform (multimedia codecs are
+	  offloaded to remote DSP processors using this framework).
+
+	  It's safe to say n here if you're not interested in multimedia
+	  offloading or just want a bare minimum kernel.
 
 endmenu

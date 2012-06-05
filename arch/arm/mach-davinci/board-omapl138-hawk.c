@@ -20,6 +20,7 @@
 #include <mach/cp_intc.h>
 #include <mach/da8xx.h>
 #include <mach/mux.h>
+#include <mach/remoteproc.h>
 
 #define HAWKBOARD_PHY_ID		"davinci_mdio-0:07"
 #define DA850_HAWK_MMCSD_CD_PIN		GPIO_TO_PIN(3, 12)
@@ -58,6 +59,8 @@ static __init void omapl138_hawk_config_emac(void)
 	pr_info("EMAC: MII PHY configured\n");
 
 	soc_info->emac_pdata->phy_id = HAWKBOARD_PHY_ID;
+	memcpy(soc_info->emac_pdata->mac_addr, "badbad", 6);
+	pr_info("set mac_addr\n");
 
 	ret = da8xx_register_emac();
 	if (ret)
@@ -124,12 +127,12 @@ static const short hawk_mmcsd0_pins[] = {
 
 static int da850_hawk_mmc_get_ro(int index)
 {
-	return gpio_get_value(DA850_HAWK_MMCSD_WP_PIN);
+        return 0; /* gpio_get_value(DA850_HAWK_MMCSD_WP_PIN); */
 }
 
 static int da850_hawk_mmc_get_cd(int index)
 {
-	return !gpio_get_value(DA850_HAWK_MMCSD_CD_PIN);
+        return 1; /* !gpio_get_value(DA850_HAWK_MMCSD_CD_PIN); */
 }
 
 static struct davinci_mmc_config da850_mmc_config = {
@@ -319,6 +322,10 @@ static __init void omapl138_hawk_init(void)
 		pr_warning("omapl138_hawk_init: "
 			"watchdog registration failed: %d\n",
 			ret);
+
+	ret = da850_register_rproc();
+	if (ret)
+		pr_warning("dsp/rproc registration failed: %d\n", ret);
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE
@@ -337,6 +344,8 @@ static void __init omapl138_hawk_map_io(void)
 	da850_init();
 }
 
+extern void __init davinci_rproc_reserve_contig(void);
+
 MACHINE_START(OMAPL138_HAWKBOARD, "AM18x/OMAP-L138 Hawkboard")
 	.atag_offset	= 0x100,
 	.map_io		= omapl138_hawk_map_io,
@@ -345,4 +354,5 @@ MACHINE_START(OMAPL138_HAWKBOARD, "AM18x/OMAP-L138 Hawkboard")
 	.init_machine	= omapl138_hawk_init,
 	.dma_zone_size	= SZ_128M,
 	.restart	= da8xx_restart,
+	.reserve	= davinci_rproc_reserve_contig,
 MACHINE_END

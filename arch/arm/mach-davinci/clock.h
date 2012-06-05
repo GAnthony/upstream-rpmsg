@@ -112,6 +112,7 @@ struct clk {
 #define PRE_PLL			BIT(4) /* source is before PLL mult/div */
 #define PSC_SWRSTDISABLE	BIT(5) /* Disable state is SwRstDisable */
 #define PSC_FORCE		BIT(6) /* Force module state transtition */
+#define PSC_LRST		BIT(8) /* Use local reset on enable/disable */
 
 #define CLK(dev, con, ck) 	\
 	{			\

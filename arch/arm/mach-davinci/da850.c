@@ -76,6 +76,13 @@ static struct clk pll0_aux_clk = {
 	.flags		= CLK_PLL | PRE_PLL,
 };
 
+static struct clk pll0_sysclk1 = {
+	.name		= "pll0_sysclk1",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV1,
+};
+
 static struct clk pll0_sysclk2 = {
 	.name		= "pll0_sysclk2",
 	.parent		= &pll0_clk,
@@ -355,10 +362,19 @@ static struct clk sata_clk = {
 	.flags		= PSC_FORCE,
 };
 
+static struct clk dsp_clk = {
+	.name		= "dsp",
+	.parent		= &pll0_sysclk1,
+	.domain		= DAVINCI_GPSC_DSPDOMAIN,
+	.lpsc		= DA8XX_LPSC0_GEM,
+	.flags		= PSC_LRST,
+};
+
 static struct clk_lookup da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
 	CLK(NULL,		"pll0_aux",	&pll0_aux_clk),
+	CLK(NULL,		"pll0_sysclk1",	&pll0_sysclk1),
 	CLK(NULL,		"pll0_sysclk2",	&pll0_sysclk2),
 	CLK(NULL,		"pll0_sysclk3",	&pll0_sysclk3),
 	CLK(NULL,		"pll0_sysclk4",	&pll0_sysclk4),
@@ -398,6 +414,7 @@ static struct clk_lookup da850_clks[] = {
 	CLK("spi_davinci.0",	NULL,		&spi0_clk),
 	CLK("spi_davinci.1",	NULL,		&spi1_clk),
 	CLK("ahci",		NULL,		&sata_clk),
+	CLK(NULL,		"dsp",		&dsp_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -1026,7 +1043,7 @@ static int da850_round_armrate(struct clk *clk, unsigned long rate)
 }
 #endif
 
-int __init da850_register_pm(struct platform_device *pdev)
+__init int da850_register_pm(struct platform_device *pdev)
 {
 	int ret;
 	struct davinci_pm_config *pdata = pdev->dev.platform_data;

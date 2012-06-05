@@ -245,8 +245,9 @@
 
 #define MDSTAT_STATE_MASK	0x3f
 #define PDSTAT_STATE_MASK	0x1f
+#define MDCTL_LRST		BIT(8)
 #define MDCTL_FORCE		BIT(31)
-#define PDCTL_NEXT		BIT(1)
+#define PDCTL_NEXT		BIT(0)
 #define PDCTL_EPCGOOD		BIT(8)
 
 #ifndef __ASSEMBLER__

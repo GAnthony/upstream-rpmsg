@@ -77,6 +77,7 @@ void davinci_psc_config(unsigned int domain, unsigned int ctlr,
 	mdctl |= next_state;
 	if (flags & PSC_FORCE)
 		mdctl |= MDCTL_FORCE;
+
 	__raw_writel(mdctl, psc_base + MDCTL + 4 * id);
 
 	pdstat = __raw_readl(psc_base + PDSTAT + 4 * domain);
@@ -107,6 +108,16 @@ void davinci_psc_config(unsigned int domain, unsigned int ctlr,
 	do {
 		mdstat = __raw_readl(psc_base + MDSTAT + 4 * id);
 	} while (!((mdstat & MDSTAT_STATE_MASK) == next_state));
+
+	if (flags & PSC_LRST) {
+	    printk("PSC_LRST on and enable = %d for domain %d, id %d\n", enable, domain, id);
+		if (enable)
+			mdctl |= MDCTL_LRST;
+		else
+			mdctl &= ~MDCTL_LRST;
+		printk("mdctl = 0x%x\n", mdctl);
+	}
+	__raw_writel(mdctl, psc_base + MDCTL + 4 * id);
 
 	iounmap(psc_base);
 }

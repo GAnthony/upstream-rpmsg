@@ -90,6 +90,7 @@ int da850_register_cpufreq(char *async_clk);
 int da8xx_register_cpuidle(void);
 void __iomem * __init da8xx_get_mem_ctlr(void);
 int da850_register_pm(struct platform_device *pdev);
+int da850_register_rproc(void);
 int __init da850_register_sata(unsigned long refclkpn);
 void da8xx_restart(char mode, const char *cmd);
 
