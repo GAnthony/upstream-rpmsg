@@ -44,6 +44,7 @@
 #include <mach/mux.h>
 #include <mach/aemif.h>
 #include <mach/spi.h>
+#include <mach/remoteproc.h>
 
 #define DA850_EVM_PHY_ID		"davinci_mdio-0:00"
 #define DA850_LCD_PWR_PIN		GPIO_TO_PIN(2, 8)
@@ -1387,6 +1388,10 @@ static __init void da850_evm_init(void)
 				ret);
 
 	da850_evm_setup_mac_addr();
+
+	ret = da850_register_rproc();
+	if (ret)
+		pr_warning("dsp/rproc registration failed: %d\n", ret);
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE
@@ -1405,6 +1410,8 @@ static void __init da850_evm_map_io(void)
 	da850_init();
 }
 
+extern void __init davinci_rproc_reserve_contig(void);
+
 MACHINE_START(DAVINCI_DA850_EVM, "DaVinci DA850/OMAP-L138/AM18x EVM")
 	.atag_offset	= 0x100,
 	.map_io		= da850_evm_map_io,
@@ -1413,4 +1420,5 @@ MACHINE_START(DAVINCI_DA850_EVM, "DaVinci DA850/OMAP-L138/AM18x EVM")
 	.init_machine	= da850_evm_init,
 	.dma_zone_size	= SZ_128M,
 	.restart	= da8xx_restart,
+	.reserve        = davinci_rproc_reserve_contig,
 MACHINE_END
