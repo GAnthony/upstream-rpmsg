@@ -32,6 +32,7 @@
 #include <net/rpmsg.h>
 #include <linux/radix-tree.h>
 
+
 #define RPMSG_CB(skb)	(*(struct sockaddr_rpmsg *)&((skb)->cb))
 
 /*
@@ -182,15 +183,19 @@ static int rpmsg_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	pr_debug("sk %p len %d\n", sk, len);
 
-	if (msg->msg_flags & MSG_OOB)
+	if (msg->msg_flags & MSG_OOB) {
+		pr_err("MSG_OOB: %d\n", EOPNOTSUPP);
 		return -EOPNOTSUPP;
+	}
 
 	msg->msg_namelen = 0;
 
 	skb = skb_recv_datagram(sk, flags, noblock, &ret);
-	if (!skb)
+	if (!skb) {
 		/* check for shutdown ? */
+		pr_err("skb_recv_datagram: %d\n", ret);
 		return ret;
+	}
 
 	if (msg->msg_name) {
 		msg->msg_namelen = sizeof(*sa);
@@ -210,7 +215,7 @@ static int rpmsg_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	ret = skb_copy_datagram_iovec(skb, 0, msg->msg_iov, len);
 	if (ret) {
-		pr_warn("error copying skb data: %d\n", ret);
+		pr_err("error copying skb data: %d\n", ret);
 		goto out_free;
 	}
 
@@ -430,8 +435,10 @@ static void __rpmsg_proto_cb(struct device *dev, int from_vproc_id, void *data,
 	struct sk_buff *skb;
 	int ret;
 
+#ifdef DEBUG /* Quiet this to improve rpmsg benchmarks: */
 	print_hex_dump(KERN_DEBUG, __func__, DUMP_PREFIX_NONE, 16, 1,
 		       data, len,  true);
+#endif
 
 	lock_sock(sk);
 
