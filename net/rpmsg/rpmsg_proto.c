@@ -32,7 +32,6 @@
 #include <net/rpmsg.h>
 #include <linux/radix-tree.h>
 
-
 #define RPMSG_CB(skb)	(*(struct sockaddr_rpmsg *)&((skb)->cb))
 
 /*
@@ -183,7 +182,7 @@ static int rpmsg_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	pr_debug("sk %p len %d\n", sk, len);
 
-	if (msg->msg_flags & MSG_OOB) {
+	if (flags & MSG_OOB) {
 		pr_err("MSG_OOB: %d\n", EOPNOTSUPP);
 		return -EOPNOTSUPP;
 	}
