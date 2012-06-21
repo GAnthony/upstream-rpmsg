@@ -434,7 +434,7 @@ static void __rpmsg_proto_cb(struct device *dev, int from_vproc_id, void *data,
 	struct sk_buff *skb;
 	int ret;
 
-#ifdef DEBUG /* Quiet this to improve rpmsg benchmarks: */
+#ifdef DEBUG_VERBOSE /* Quiet this to improve rpmsg benchmarks: */
 	print_hex_dump(KERN_DEBUG, __func__, DUMP_PREFIX_NONE, 16, 1,
 		       data, len,  true);
 #endif
