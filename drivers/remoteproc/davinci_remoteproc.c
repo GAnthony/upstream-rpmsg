@@ -9,7 +9,6 @@
  */
 
 #define pr_fmt(fmt)    "%s: " fmt, __func__
-#define DEBUG
 
 #include <linux/kernel.h>
 #include <linux/err.h>
@@ -68,7 +67,10 @@ static void handle_event(struct work_struct *work)
 {
 	struct rproc *rproc = platform_get_drvdata(remoteprocdev);
 
-	rproc_vq_interrupt(rproc, 0);
+	/* Process incoming buffers on our vring */
+	while (IRQ_HANDLED == rproc_vq_interrupt(rproc, 0));
+
+	/* Must allow wakeup of potenitally blocking senders: */
 	rproc_vq_interrupt(rproc, 1);
 }
 
@@ -83,10 +85,21 @@ static void handle_event(struct work_struct *work)
  */
 static irqreturn_t davinci_rproc_callback(int irq, void *p)
 {
-	schedule_work(&workqueue);
+	static unsigned int toggle = 0;
 
-	__raw_writel(SYSCFG_CHIPINT0, syscfg0_base + SYSCFG_CHIPSIG_CLR_OFFSET);
+	/* HACK: Ignore spurious second interrupt: */
+	if (toggle ^= 0x01) {
+		/*
+		 * Following can fail if work is pending; but it's OK since the
+		 * work function will loop to process all incoming messages.
+		 * schedule_work() calls handle_event with pending bit off.
+		 */
+		(void)schedule_work(&workqueue);
 
+		/* Clear interrupt: */
+		__raw_writel(SYSCFG_CHIPINT0, 
+			syscfg0_base + SYSCFG_CHIPSIG_CLR_OFFSET);
+	}
 	return IRQ_HANDLED;
 }
 
@@ -177,6 +190,10 @@ static int davinci_rproc_stop(struct rproc *rproc)
 	iounmap(psc_base);
 
 	free_irq(28, drproc);
+
+	/* Flush any pending work: */
+	(void)flush_work_sync(&workqueue);
+
 #else
 	pr_info("calling clk_disable: 0x%x\n", dsp_clk);
 	clk_disable(dsp_clk);
@@ -189,6 +206,11 @@ static int davinci_rproc_stop(struct rproc *rproc)
 /* kick a virtqueue */
 static void davinci_rproc_kick(struct rproc *rproc, int vqid)
 {
+	/* Poll for ack from other side first: */
+	while(__raw_readl(syscfg0_base + SYSCFG_CHIPSIG_OFFSET) &
+		SYSCFG_CHIPINT2);
+
+	/* Interupt remote proc: */
 	__raw_writel(SYSCFG_CHIPINT2, syscfg0_base + SYSCFG_CHIPSIG_OFFSET);
 }
 
