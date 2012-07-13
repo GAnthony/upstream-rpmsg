@@ -85,10 +85,8 @@ static void handle_event(struct work_struct *work)
  */
 static irqreturn_t davinci_rproc_callback(int irq, void *p)
 {
-	static unsigned int toggle = 0;
-
-	/* HACK: Ignore spurious second interrupt: */
-	if (toggle ^= 0x01) {
+	if (__raw_readl(syscfg0_base + SYSCFG_CHIPSIG_OFFSET) &
+	    SYSCFG_CHIPINT0) {
 		/*
 		 * Following can fail if work is pending; but it's OK since the
 		 * work function will loop to process all incoming messages.
@@ -100,6 +98,7 @@ static irqreturn_t davinci_rproc_callback(int irq, void *p)
 		__raw_writel(SYSCFG_CHIPINT0, 
 			syscfg0_base + SYSCFG_CHIPSIG_CLR_OFFSET);
 	}
+
 	return IRQ_HANDLED;
 }
 
